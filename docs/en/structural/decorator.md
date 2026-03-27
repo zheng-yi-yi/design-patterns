@@ -1,93 +1,239 @@
+---
+title: Decorator Pattern
+description: Dynamically attach additional responsibilities to an object without modifying its interface — a flexible alternative to subclassing.
+---
+
 # Decorator Pattern
 
-## Real-World Example
+::: tip Definition
+Dynamically attach additional responsibilities to an object **without modifying** the original object or its interface. The Decorator pattern is more flexible than subclass inheritance for extending functionality.
+:::
 
-Java's I/O library extensively uses the Decorator pattern. `BufferedReader`, `BufferedWriter`, and `PrintStream` are decorators that extend `Reader`, `Writer`, and `OutputStream` with buffering and printing capabilities.
+## 1. Intent
 
-In Java collections, `Collections.synchronizedList()` is a decorator that adds synchronization to an `ArrayList`.
+**What problem does it solve?**
+*   You need to dynamically **layer** new behaviors onto an object without modifying its source code.
+*   Using inheritance for every combination leads to subclass explosion, and inheritance is static — you can't mix-and-match behaviors at runtime.
 
-## Definition
+**Example scenarios**
+*   ✅ Scenario A: An HTTP request pipeline — layer logging, authentication, rate limiting, and response compression as cross-cutting concerns around core business logic.
+*   ✅ Scenario B: SaaS subscription billing — base plan + optional add-ons (advanced analytics, API quota boost, dedicated support); each add-on is a decorator.
+*   ❌ Anti-pattern: If the feature combinations are fixed and very few, just write a couple of subclasses — no need for decorators.
 
-> **Decorator Pattern**: Dynamically attach additional responsibilities to an object **without modifying** the original object.
+## 2. Structure
 
-Typically, class functionality is extended through inheritance, but this leads to subclass proliferation. The Decorator pattern provides a way to add behavior dynamically without defining subclasses, by wrapping the original object in a decorator class. This follows the **Composition/Aggregation Reuse Principle** — prefer composition over inheritance.
+### UML Class Diagram
 
-## Roles
+> ![Decorator](../images/8335a62e6bd3a59e7d75b2d0462af31f.png)
 
-1. **Component**: Defines the interface for objects that can have responsibilities added dynamically.
-2. **Concrete Component**: The original object being decorated.
-3. **Decorator (Abstract)**: Holds a reference to a Component and delegates calls to it.
-4. **Concrete Decorator**: Adds responsibilities to the component.
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Component** | Component Interface | Defines the core interface shared by decorators and the decorated object. |
+| **ConcreteComponent** | Concrete Component | The original object containing core business logic. |
+| **Decorator** | Abstract Decorator | Holds a Component reference and delegates calls. |
+| **ConcreteDecorator** | Concrete Decorator | Adds new behavior before/after delegating to the wrapped component. |
 
-## Example Code
+### Collaboration Flow
+1. Client creates a ConcreteComponent.
+2. Wraps it with one or more ConcreteDecorators.
+3. Calls the outermost decorator's method — decorators execute their added logic layer by layer, forming an **onion model**.
 
-```java
+## 3. Code Example
+
+> **Scenario**: An **HTTP request processing pipeline** — core handler wrapped with logging, auth, and rate limiting decorators.
+
+::: code-group
+
+```cs [C#]
 // Component
-interface Pizza {
-    String make();
+public interface IHttpHandler
+{
+    string Handle(string request);
 }
 
-// Concrete Component
-class PlainPizza implements Pizza {
-    @Override
-    public String make() {
-        return "Plain Pizza";
-    }
+// ConcreteComponent — core business handler
+public class BusinessHandler : IHttpHandler
+{
+    public string Handle(string request)
+        => $"[Response] Processed: {request}";
 }
 
 // Abstract Decorator
-abstract class PizzaDecorator implements Pizza {
-    protected Pizza pizza;
+public abstract class HttpHandlerDecorator : IHttpHandler
+{
+    protected readonly IHttpHandler Inner;
+    protected HttpHandlerDecorator(IHttpHandler inner) => Inner = inner;
+    public virtual string Handle(string request) => Inner.Handle(request);
+}
 
-    public PizzaDecorator(Pizza pizza) {
-        this.pizza = pizza;
-    }
+// ConcreteDecorator A — Logging
+public class LoggingDecorator : HttpHandlerDecorator
+{
+    public LoggingDecorator(IHttpHandler inner) : base(inner) { }
 
-    public String make() {
-        return pizza.make();
+    public override string Handle(string request)
+    {
+        Console.WriteLine($"[LOG] Request: {request}");
+        var response = Inner.Handle(request);
+        Console.WriteLine($"[LOG] Response: {response}");
+        return response;
     }
 }
 
-// Concrete Decorators
-class CheesePizzaDecorator extends PizzaDecorator {
-    public CheesePizzaDecorator(Pizza pizza) {
-        super(pizza);
-    }
+// ConcreteDecorator B — Authentication
+public class AuthDecorator : HttpHandlerDecorator
+{
+    public AuthDecorator(IHttpHandler inner) : base(inner) { }
 
-    public String make() {
-        return pizza.make() + " + Cheese";
-    }
-}
-
-class TomatoPizzaDecorator extends PizzaDecorator {
-    public TomatoPizzaDecorator(Pizza pizza) {
-        super(pizza);
-    }
-
-    public String make() {
-        return pizza.make() + " + Tomato";
+    public override string Handle(string request)
+    {
+        if (!request.Contains("token=valid"))
+            return "[Error] 401 Unauthorized";
+        return Inner.Handle(request);
     }
 }
 
-// Client
-public class Main {
-    public static void main(String[] args) {
-        Pizza pizza = new TomatoPizzaDecorator(
-            new CheesePizzaDecorator(new PlainPizza()));
-        System.out.println(pizza.make());
-        // Output: Plain Pizza + Cheese + Tomato
+// ConcreteDecorator C — Rate Limiting
+public class RateLimitDecorator : HttpHandlerDecorator
+{
+    private int _remaining;
+    public RateLimitDecorator(IHttpHandler inner, int limit) : base(inner)
+        => _remaining = limit;
+
+    public override string Handle(string request)
+    {
+        if (_remaining <= 0)
+            return "[Error] 429 Too Many Requests";
+        _remaining--;
+        return Inner.Handle(request);
     }
 }
 ```
 
-## Summary
+```java [Java]
+// Component
+public interface HttpHandler {
+    String handle(String request);
+}
 
-The Decorator pattern uses association (composition/aggregation) to reuse existing object functionality through delegation. The abstract decorator aggregates the component, allowing layered method calls. The order of decoration determines the call sequence.
+// ConcreteComponent
+public class BusinessHandler implements HttpHandler {
+    @Override
+    public String handle(String request) {
+        return "[Response] Processed: " + request;
+    }
+}
 
-Key benefits:
-- More flexible than inheritance — extend behavior at runtime.
-- Decorators and decorated objects can vary independently.
-- Conforms to the Open/Closed Principle — add new decorators without modifying existing code.
+// Abstract Decorator
+public abstract class HttpHandlerDecorator implements HttpHandler {
+    protected final HttpHandler inner;
+    protected HttpHandlerDecorator(HttpHandler inner) { this.inner = inner; }
 
-Key drawback:
-- May increase system complexity with many concrete decorator classes.
+    @Override
+    public String handle(String request) { return inner.handle(request); }
+}
+
+// Logging Decorator
+public class LoggingDecorator extends HttpHandlerDecorator {
+    public LoggingDecorator(HttpHandler inner) { super(inner); }
+
+    @Override
+    public String handle(String request) {
+        System.out.println("[LOG] Request: " + request);
+        String response = inner.handle(request);
+        System.out.println("[LOG] Response: " + response);
+        return response;
+    }
+}
+
+// Auth Decorator
+public class AuthDecorator extends HttpHandlerDecorator {
+    public AuthDecorator(HttpHandler inner) { super(inner); }
+
+    @Override
+    public String handle(String request) {
+        if (!request.contains("token=valid"))
+            return "[Error] 401 Unauthorized";
+        return inner.handle(request);
+    }
+}
+
+// Rate Limit Decorator
+public class RateLimitDecorator extends HttpHandlerDecorator {
+    private int remaining;
+    public RateLimitDecorator(HttpHandler inner, int limit) {
+        super(inner);
+        this.remaining = limit;
+    }
+
+    @Override
+    public String handle(String request) {
+        if (remaining <= 0)
+            return "[Error] 429 Too Many Requests";
+        remaining--;
+        return inner.handle(request);
+    }
+}
+```
+
+:::
+
+Client usage:
+
+::: code-group
+
+```cs [C#]
+IHttpHandler pipeline = new RateLimitDecorator(
+    new AuthDecorator(
+        new LoggingDecorator(
+            new BusinessHandler())),
+    limit: 100);
+
+Console.WriteLine(pipeline.Handle("/api/orders?token=valid"));
+Console.WriteLine(pipeline.Handle("/api/orders")); // 401 Unauthorized
+```
+
+```java [Java]
+HttpHandler pipeline = new RateLimitDecorator(
+    new AuthDecorator(
+        new LoggingDecorator(
+            new BusinessHandler())),
+    100);
+
+System.out.println(pipeline.handle("/api/orders?token=valid"));
+System.out.println(pipeline.handle("/api/orders")); // 401 Unauthorized
+```
+
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Runtime flexibility**: Stack any number and order of decorators as needed — far more combinations than inheritance.
+2. **Open/Closed Principle**: New cross-cutting concerns require only a new decorator class.
+3. **Single Responsibility**: Each decorator focuses on one concern (logging, auth, rate limiting).
+
+### Cons
+1. **Deep nesting**: Too many decorators make construction code and debug stack traces complex.
+2. **Order-sensitive**: The wrapping order affects execution order — misuse can cause unexpected behavior.
+
+## 5. Related Patterns
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Proxy** | Both hold a reference to the target and enhance behavior | Proxy controls **access** (lazy loading, permissions); Decorator adds **responsibilities** and supports multi-layer stacking. |
+| **Composite** | Both use recursive structure | Composite builds part-whole trees; Decorator builds core-wrapper chains. |
+| **Chain of Responsibility** | Both form call chains | Each handler in CoR can independently decide to stop propagation; Decorator always delegates inward. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The Decorator pattern is about **transparent wrapping and layered responsibilities** — adding behavior to an object dynamically without changing its interface, like Russian nesting dolls.
+
+**Real-World Applications**
+
+*   **Java I/O**: `BufferedInputStream(new FileInputStream(...))` is a textbook decorator chain.
+*   **ASP.NET Core Middleware**: Each middleware is a decorator — `app.UseAuthentication()`, `app.UseRateLimiter()`, `app.UseResponseCompression()` form a processing pipeline.
+*   **Spring Security FilterChain**: Each `Filter` in the `SecurityFilterChain` wraps the request handling logic in decorator fashion.

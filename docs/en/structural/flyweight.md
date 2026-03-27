@@ -1,106 +1,212 @@
+---
+title: Flyweight Pattern
+description: Use sharing to efficiently support large numbers of fine-grained objects, reducing memory consumption.
+---
+
 # Flyweight Pattern
 
-## Real-World Example
+::: tip Definition
+Use **sharing** to efficiently support large numbers of fine-grained objects. By separating intrinsic state (shareable) from extrinsic state (context-dependent), the Flyweight pattern dramatically reduces the number of objects in memory.
+:::
 
-The `String` class uses the Flyweight pattern concept. When creating a `String`, the JVM first checks the string constant pool for an identical string — if found, it returns the pooled object; otherwise, a new string object is created.
+## 1. Intent
 
-Similarly, wrapper classes like `Integer` and `Long` cache values within a certain range. Calling `valueOf()` within the cache range returns a cached object directly.
+**What problem does it solve?**
+*   The system needs to create a huge number of similar objects that differ only in a few attributes, causing excessive memory usage.
+*   Example: An online map with hundreds of thousands of POI icons — most share the same icon image but have different coordinates.
 
-## Definition
+**Example scenarios**
+*   ✅ Scenario A: **Online map application** — hundreds of thousands of POI markers (restaurants, gas stations, parking lots). Icon style is shared intrinsic state; GPS coordinates are extrinsic state.
+*   ✅ Scenario B: **Game particle systems** — thousands of bullets/particles share texture and model data; position and velocity are unique per instance.
+*   ❌ Anti-pattern: If the object count is small or each object's state is highly unique, the complexity cost isn't worth it.
 
-> **Flyweight Pattern**: Use sharing to support **large numbers of fine-grained objects** efficiently. The system uses only a small number of objects that are very similar, with minimal state changes and high reuse frequency.
+## 2. Structure
 
-The Flyweight Factory manages flyweight objects, typically using a collection to store created instances. When a flyweight is requested, the factory checks if it already exists — if so, it returns the existing one; otherwise, it creates a new one.
+### UML Class Diagram
 
-## Intrinsic State vs. Extrinsic State
+> ![Flyweight](../images/40696759ff6063e88b4672e7e916b5b2.png)
 
-1. **Intrinsic State**: The flyweight's inherent, immutable properties. Can be shared across contexts because they don't depend on specific scenarios.
-2. **Extrinsic State**: Context-dependent information provided by the client, which changes with usage and cannot be shared.
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Flyweight** | Flyweight Interface | Declares operations that accept extrinsic state. |
+| **ConcreteFlyweight** | Concrete Flyweight | Stores intrinsic state (shareable); implements the Flyweight interface. |
+| **UnsharedConcreteFlyweight** | Unshared Flyweight | Objects that aren't shared; hold all state internally. |
+| **FlyweightFactory** | Flyweight Factory | Manages the flyweight pool; returns existing instances or creates new ones. |
 
-Example — a game of Go:
-- **Intrinsic state**: The stone's color (black or white) — fixed once created.
-- **Extrinsic state**: The stone's position on the board — changes during the game.
+### Intrinsic vs Extrinsic State
+*   **Intrinsic State**: Stored inside the flyweight, immutable, environment-independent, shareable. E.g., icon image / color.
+*   **Extrinsic State**: Passed in by the client, varies with context, not shareable. E.g., GPS coordinates on a map.
 
-## Roles
+### Collaboration Flow
+1. Client requests a flyweight from the Factory (passing an intrinsic state key).
+2. Factory checks the pool — returns existing instance if found, otherwise creates and caches a new one.
+3. Client passes extrinsic state when invoking the flyweight's operation.
 
-1. **Flyweight (Abstract)**: The superclass/interface for all concrete flyweights. Accepts and operates on extrinsic state.
-2. **Concrete Flyweight**: Implements the Flyweight interface and stores intrinsic state. Must be shareable.
-3. **Unshared Concrete Flyweight**: Not all Flyweight subclasses need to be shared. These are non-shared instances.
-4. **Flyweight Factory**: Creates and manages flyweight objects (a flyweight pool). Provides existing instances or creates new ones on demand.
+## 3. Code Example
 
-## Example Code
+> **Scenario**: **Online map POI icon rendering** — the map has many markers (restaurants, gas stations), icon styles are shared, coordinates vary.
 
-```java
-import java.util.HashMap;
-import java.util.Map;
+::: code-group
 
+```cs [C#]
 // Flyweight interface
-interface Flyweight {
-    void operation(String externalState);
+public interface IPoiIcon
+{
+    void Render(double lat, double lng);
 }
 
-// Concrete Flyweight
-class ConcreteFlyweight implements Flyweight {
-    private final String intrinsicState;
+// ConcreteFlyweight — shared icon (intrinsic: type + image)
+public class PoiIcon : IPoiIcon
+{
+    public string Type { get; }
+    public string ImagePath { get; }
 
-    public ConcreteFlyweight(String intrinsicState) {
-        this.intrinsicState = intrinsicState;
+    public PoiIcon(string type, string imagePath)
+    {
+        Type = type;
+        ImagePath = imagePath;
+        Console.WriteLine($"  [Created icon] {type} -> {imagePath}");
     }
 
-    @Override
-    public void operation(String externalState) {
-        System.out.println("Intrinsic State = " + this.intrinsicState);
-        System.out.println("External State = " + externalState);
-    }
+    public void Render(double lat, double lng)
+        => Console.WriteLine($"  📍 [{Type}] ({lat}, {lng}) using {ImagePath}");
 }
 
-// Unshared Concrete Flyweight
-class UnsharedConcreteFlyweight implements Flyweight {
-    private final String allState;
+// FlyweightFactory
+public class PoiIconFactory
+{
+    private readonly Dictionary<string, IPoiIcon> _pool = new();
 
-    public UnsharedConcreteFlyweight(String allState) {
-        this.allState = allState;
-    }
-
-    @Override
-    public void operation(String externalState) {
-        System.out.println("All State = " + this.allState);
-        System.out.println("External State = " + externalState);
-    }
-}
-
-// Flyweight Factory
-class FlyweightFactory {
-    private final Map<String, Flyweight> flyweights = new HashMap<>();
-
-    public Flyweight getFlyweight(String key) {
-        Flyweight flyweight = flyweights.get(key);
-        if (flyweight == null) {
-            flyweight = new ConcreteFlyweight(key);
-            flyweights.put(key, flyweight);
+    public IPoiIcon GetIcon(string type)
+    {
+        if (!_pool.TryGetValue(type, out var icon))
+        {
+            icon = new PoiIcon(type, $"/icons/{type}.png");
+            _pool[type] = icon;
         }
-        return flyweight;
+        return icon;
     }
-}
 
-public class Client {
-    public static void main(String[] args) {
-        FlyweightFactory factory = new FlyweightFactory();
-
-        Flyweight flyweight1 = factory.getFlyweight("A");
-        Flyweight flyweight2 = factory.getFlyweight("A");
-
-        System.out.println(flyweight1 == flyweight2); // true
-
-        flyweight1.operation("External State1");
-        flyweight2.operation("External State2");
-
-        Flyweight unshared = new UnsharedConcreteFlyweight("All State");
-        unshared.operation("External State3");
-    }
+    public int PoolSize => _pool.Count;
 }
 ```
 
-## Summary
+```java [Java]
+// Flyweight interface
+public interface PoiIcon {
+    void render(double lat, double lng);
+}
 
-The Flyweight pattern optimizes performance when dealing with large numbers of similar objects. By sharing the same intrinsic state, it significantly reduces memory usage. However, flyweight objects' state should not be changed arbitrarily, as modifications could affect all contexts sharing the same instance.
+// ConcreteFlyweight
+public class ConcretePoiIcon implements PoiIcon {
+    private final String type;
+    private final String imagePath;
+
+    public ConcretePoiIcon(String type, String imagePath) {
+        this.type = type;
+        this.imagePath = imagePath;
+        System.out.printf("  [Created icon] %s -> %s%n", type, imagePath);
+    }
+
+    @Override
+    public void render(double lat, double lng) {
+        System.out.printf("  📍 [%s] (%.4f, %.4f) using %s%n", type, lat, lng, imagePath);
+    }
+}
+
+// FlyweightFactory
+public class PoiIconFactory {
+    private final Map<String, PoiIcon> pool = new HashMap<>();
+
+    public PoiIcon getIcon(String type) {
+        return pool.computeIfAbsent(type,
+            t -> new ConcretePoiIcon(t, "/icons/" + t + ".png"));
+    }
+
+    public int getPoolSize() { return pool.size(); }
+}
+```
+
+:::
+
+Client usage:
+
+::: code-group
+
+```cs [C#]
+var factory = new PoiIconFactory();
+
+var poiData = new (string type, double lat, double lng)[]
+{
+    ("restaurant",  40.7128, -74.0060),
+    ("gas_station", 40.7580, -73.9855),
+    ("restaurant",  34.0522, -118.2437),
+    ("parking",     34.0622, -118.2537),
+    ("restaurant",  51.5074, -0.1278),
+    ("gas_station", 51.5174, -0.1378),
+};
+
+foreach (var (type, lat, lng) in poiData)
+{
+    IPoiIcon icon = factory.GetIcon(type);
+    icon.Render(lat, lng);
+}
+
+Console.WriteLine($"\nTotal POIs: {poiData.Length}, Icon objects: {factory.PoolSize}");
+// Total POIs: 6, Icon objects: 3
+```
+
+```java [Java]
+PoiIconFactory factory = new PoiIconFactory();
+
+String[][] poiData = {
+    {"restaurant",  "40.7128", "-74.0060"},
+    {"gas_station", "40.7580", "-73.9855"},
+    {"restaurant",  "34.0522", "-118.2437"},
+    {"parking",     "34.0622", "-118.2537"},
+    {"restaurant",  "51.5074", "-0.1278"},
+    {"gas_station", "51.5174", "-0.1378"},
+};
+
+for (String[] poi : poiData) {
+    PoiIcon icon = factory.getIcon(poi[0]);
+    icon.render(Double.parseDouble(poi[1]), Double.parseDouble(poi[2]));
+}
+
+System.out.printf("%nTotal POIs: %d, Icon objects: %d%n", poiData.length, factory.getPoolSize());
+```
+
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Dramatically reduces memory**: Thousands of objects may only need a handful of flyweight instances.
+2. **Centralized shared-state management**: Intrinsic state is maintained by the factory, avoiding duplication.
+
+### Cons
+1. **Increased code complexity**: Splitting state into intrinsic and extrinsic adds design overhead.
+2. **Thread safety**: Concurrent access to the flyweight pool requires synchronization.
+3. **Extrinsic state management burden**: Clients must track and pass extrinsic state themselves.
+
+## 5. Related Patterns
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Singleton** | Both control instance count | Singleton ensures one global instance; Flyweight manages multiple shared instances keyed by intrinsic state. |
+| **Object Pool** | Both reuse objects | Pool objects are mutable and exclusively borrowed; Flyweight objects are immutable and concurrently shared. |
+| **Composite** | Often combined | Composite leaf nodes can be implemented as flyweights to reduce memory for large trees. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The Flyweight pattern is about **sharing the immutable, isolating the variable** — extract shared intrinsic state into reusable flyweight objects, and let extrinsic state be managed externally. This enables extreme memory optimization for scenarios with massive similar objects.
+
+**Real-World Applications**
+
+*   **Java String Pool**: The JVM interns identical string literals — `"hello" == "hello"` is `true`.
+*   **Integer Cache**: `Integer.valueOf()` returns cached instances for -128 to 127.
+*   **Game Engines (Unity / Unreal)**: Textures, materials, and mesh data are shared across many GameObjects to avoid redundant loading.
+*   **Browser DOM**: CSS style objects are shared across multiple DOM nodes rather than duplicated per element.

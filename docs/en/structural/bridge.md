@@ -1,92 +1,199 @@
+---
+title: Bridge Pattern
+description: Decouple an abstraction from its implementation so that the two can vary independently, avoiding class explosion from multi-dimensional variation.
+---
+
 # Bridge Pattern
 
-## Real-World Example
+::: tip Definition
+Decouple an **abstraction** from its **implementation** so that the two can vary independently. The Bridge pattern uses **composition** over **inheritance** to handle multi-dimensional variation and prevent class explosion.
+:::
 
-JDBC defines a set of interfaces, while each database vendor provides concrete implementations. Java programs connect to various databases through this unified interface without worrying about specific implementations — a typical Bridge pattern application.
+## 1. Intent
 
-Java's RMI (Remote Method Invocation) also uses the Bridge pattern: a remote object (abstraction) can have multiple communication protocols (implementation), such as TCP/IP or HTTP, and both can vary independently.
+**What problem does it solve?**
+*   When a class has two or more independently varying dimensions, using inheritance results in a Cartesian product explosion of subclasses.
+*   Example: A notification system with **message urgency** (normal, urgent, scheduled) and **delivery channel** (SMS, email, push notification, Slack) — 3 × 4 = 12 subclasses.
 
-## Definition
+**Example scenarios**
+*   ✅ Scenario A: Cross-platform UI rendering — widget types (Button, TextBox) × platform implementations (Windows, macOS, Linux).
+*   ✅ Scenario B: Notification system — message urgency × delivery channel, two dimensions that grow independently.
+*   ❌ Anti-pattern: If only one dimension varies, use Strategy or simple inheritance instead.
 
-> **Bridge Pattern**: Decouple an **abstraction** from its **implementation** so that the two can vary independently. This prevents "class explosion" in multi-dimensional variations and improves extensibility.
+## 2. Structure
 
-In the Bridge pattern, the abstraction and implementation are connected through composition rather than inheritance. Adding new features to the abstraction or new implementations does not affect the other part.
+### UML Class Diagram
 
-## Roles
+> ![Bridge](../images/image-20240616133105881.png)
 
-1. **Abstraction**: Defines the abstract class and contains a reference to an Implementor object.
-2. **Refined Abstraction**: A subclass of Abstraction that implements business methods using the Implementor.
-3. **Implementor**: Defines the interface for implementation classes, providing basic operation methods.
-4. **Concrete Implementor**: Concrete implementations of the Implementor interface.
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Abstraction** | Abstraction | Defines the high-level business interface; holds a reference to an Implementor. |
+| **RefinedAbstraction** | Refined Abstraction | Extends Abstraction with specific business logic. |
+| **Implementor** | Implementor | Defines the interface for implementation classes. |
+| **ConcreteImplementor** | Concrete Implementor | Provides the actual low-level operations. |
 
-## Example Code
+### Collaboration Flow
+1. Client creates a ConcreteImplementor (e.g., `SmsSender`).
+2. Injects it into a RefinedAbstraction (e.g., `UrgentMessage`).
+3. Calls the abstraction's method, which delegates to the implementor for the actual work.
 
-```java
-// Implementor
-interface Color {
-    void applyColor();
+## 3. Code Example
+
+> **Scenario**: A **notification system** — message types (normal, urgent) × delivery channels (SMS, Slack).
+
+::: code-group
+
+```cs [C#]
+// Implementor — delivery channel
+public interface IMessageSender
+{
+    void Send(string recipient, string content);
 }
 
-// Concrete Implementors
-class RedColor implements Color {
-    public void applyColor() {
-        System.out.println("red.");
-    }
+// ConcreteImplementor A — SMS
+public class SmsSender : IMessageSender
+{
+    public void Send(string recipient, string content)
+        => Console.WriteLine($"[SMS] -> {recipient}: {content}");
 }
 
-class BlueColor implements Color {
-    public void applyColor() {
-        System.out.println("blue.");
-    }
+// ConcreteImplementor B — Slack
+public class SlackSender : IMessageSender
+{
+    public void Send(string recipient, string content)
+        => Console.WriteLine($"[Slack] -> #{recipient}: {content}");
 }
 
 // Abstraction
-abstract class Shape {
-    protected Color color;
-
-    public Shape(Color color) {
-        this.color = color;
-    }
-
-    abstract public void applyColor();
+public abstract class Message
+{
+    protected IMessageSender Sender;
+    protected Message(IMessageSender sender) => Sender = sender;
+    public abstract void Notify(string recipient, string content);
 }
 
-// Refined Abstractions
-class Triangle extends Shape {
-    public Triangle(Color color) {
-        super(color);
-    }
-
-    public void applyColor() {
-        System.out.print("Triangle filled with color ");
-        color.applyColor();
-    }
+// RefinedAbstraction A — Normal message
+public class NormalMessage : Message
+{
+    public NormalMessage(IMessageSender sender) : base(sender) { }
+    public override void Notify(string recipient, string content)
+        => Sender.Send(recipient, content);
 }
 
-class Circle extends Shape {
-    public Circle(Color color) {
-        super(color);
-    }
-
-    public void applyColor() {
-        System.out.print("Circle filled with color ");
-        color.applyColor();
-    }
-}
-
-public class Client {
-    public static void main(String[] args) {
-        Shape tri = new Triangle(new RedColor());
-        tri.applyColor();
-
-        Shape cir = new Circle(new BlueColor());
-        cir.applyColor();
+// RefinedAbstraction B — Urgent message (repeated + tagged)
+public class UrgentMessage : Message
+{
+    public UrgentMessage(IMessageSender sender) : base(sender) { }
+    public override void Notify(string recipient, string content)
+    {
+        Sender.Send(recipient, $"[URGENT] {content}");
+        Sender.Send(recipient, $"[URGENT-RETRY] {content}");
     }
 }
 ```
 
-## Summary
+```java [Java]
+// Implementor — delivery channel
+public interface MessageSender {
+    void send(String recipient, String content);
+}
 
-> "The Bridge pattern is complex to implement and rarely used directly, but its design philosophy is worth learning: avoid over-using inheritance — prefer composition to extend functionality."
+// ConcreteImplementor A — SMS
+public class SmsSender implements MessageSender {
+    @Override
+    public void send(String recipient, String content) {
+        System.out.printf("[SMS] -> %s: %s%n", recipient, content);
+    }
+}
 
-The Bridge pattern focuses on using **composition over inheritance**. When a class has multiple dimensions of variation, using inheritance for each dimension leads to a combinatorial explosion of subclasses. The Bridge pattern lets each dimension vary independently, reducing coupling. `RefinedAbstraction` and `ConcreteImplementor` are loosely coupled — connected only through the aggregation relationship between `Abstraction` and `Implementor`.
+// ConcreteImplementor B — Slack
+public class SlackSender implements MessageSender {
+    @Override
+    public void send(String recipient, String content) {
+        System.out.printf("[Slack] -> #%s: %s%n", recipient, content);
+    }
+}
+
+// Abstraction
+public abstract class Message {
+    protected MessageSender sender;
+    protected Message(MessageSender sender) { this.sender = sender; }
+    public abstract void notify(String recipient, String content);
+}
+
+// RefinedAbstraction A — Normal message
+public class NormalMessage extends Message {
+    public NormalMessage(MessageSender sender) { super(sender); }
+    @Override
+    public void notify(String recipient, String content) {
+        sender.send(recipient, content);
+    }
+}
+
+// RefinedAbstraction B — Urgent message
+public class UrgentMessage extends Message {
+    public UrgentMessage(MessageSender sender) { super(sender); }
+    @Override
+    public void notify(String recipient, String content) {
+        sender.send(recipient, "[URGENT] " + content);
+        sender.send(recipient, "[URGENT-RETRY] " + content);
+    }
+}
+```
+
+:::
+
+Client usage:
+
+::: code-group
+
+```cs [C#]
+Message msg = new NormalMessage(new SmsSender());
+msg.Notify("+1234567890", "Your order has shipped.");
+
+msg = new UrgentMessage(new SlackSender());
+msg.Notify("oncall-alerts", "Production DB connection pool exhausted!");
+```
+
+```java [Java]
+Message msg = new NormalMessage(new SmsSender());
+msg.notify("+1234567890", "Your order has shipped.");
+
+msg = new UrgentMessage(new SlackSender());
+msg.notify("oncall-alerts", "Production DB connection pool exhausted!");
+```
+
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Avoids class explosion**: M abstractions + N implementations = M + N classes, not M × N.
+2. **Open/Closed Principle**: Adding new message types or channels doesn't affect existing code.
+3. **Composition over inheritance**: Implementations can be swapped at runtime.
+
+### Cons
+1. **Design complexity**: Requires identifying independent dimensions early — demands strong design skills.
+2. **Comprehension cost**: The separation between abstraction and implementation adds indirection.
+
+## 5. Related Patterns
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Adapter** | Both involve interface separation | Adapter is a retrofit for compatibility; Bridge is designed upfront for independent variation. |
+| **Strategy** | Both use composition over inheritance | Strategy swaps algorithms; Bridge separates two independently varying dimensions. |
+| **Abstract Factory** | Often used together | Abstract Factory can create the concrete implementors used in Bridge. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The Bridge pattern is about **separating dimensions of variation** — when a system has multiple independent axes of change, use composition to decouple them so each can evolve independently.
+
+**Real-World Applications**
+
+*   **JDBC**: `DriverManager` (abstraction) and vendor `Driver` implementations form a bridge — applications use unified JDBC interfaces to access MySQL, PostgreSQL, etc.
+*   **.NET MAUI / Xamarin**: Cross-platform UI rendering is a classic bridge — the abstraction layer defines `Button`, `Label` APIs, while each platform (Android, iOS, Windows) provides concrete rendering.
+*   **Logging Frameworks**: SLF4J's Abstraction + Binding architecture is essentially a Bridge pattern.
