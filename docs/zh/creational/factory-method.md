@@ -1,31 +1,49 @@
 ---
 title: 工厂方法模式
-description: 了解工厂方法模式如何通过将实例化延迟到子类来提高系统的可扩展性。
+description: 定义一个用于创建对象的接口，让子类决定实例化哪一个类，使实例化延迟到子类。
 ---
 
 # 工厂方法模式
 
-工厂方法模式引入了抽象工厂和具体工厂。每个具体工厂只负责创建一种特定的产品（重写抽象工厂定义的抽象方法）。这样一来，增加新的产品类只需要增加新的工厂类，而无需修改现有的工厂代码。这支持了扩展并符合开闭原则。
+::: tip 定义
+**工厂方法模式**：定义一个用于创建对象的接口，但**让子类决定实例化哪一个类**。工厂方法使一个类的实例化延迟到其子类，从而在不修改已有代码的前提下扩展新产品。
+:::
+
+## 1. 模式意图
+
+**解决了什么问题？**
+*   简单工厂把所有创建逻辑塞进一个工厂类，每次新增产品都要修改该类，违反开闭原则。工厂方法通过为每种产品提供独立的工厂子类，将创建逻辑分散化，新增产品只需新增工厂类。
+*   当父类需要控制创建流程（校验 → 创建 → 后处理），但**创建哪种具体对象**由子类决定时。
+
+**应用场景举例**
+*   ✅ 跨平台文档导出：导出流程相同，但 PDF/Word/HTML 的序列化方式不同，由子类工厂决定。
+*   ✅ 游戏关卡敌人生成：刷怪机制统一，但不同关卡生成不同敌人类型。
+*   ✅ 日志框架：核心框架定义日志写入流程，具体输出到文件/数据库/消息队列由工厂子类决定。
+*   ❌ 只有一两种产品且不太会变化时，使用简单工厂即可，无需引入工厂方法的额外层级。
+
+## 2. 模式结构
+
+### UML 类图
 
 ![工厂方法模式](../images/5968a8a58e4e0cda5b4acfe05bf71414.png)
 
-::: info 定义
-**工厂方法模式 (Factory Method Pattern)**：定义一个用于创建对象的接口，但是**让子类决定将哪一个类实例化**。工厂方法模式**使一个类的实例化延迟到其子类**。
-:::
+### 角色与职责
+| 角色 | 名称 | 职责描述 |
+| :--- | :--- | :--- |
+| **Creator** | 抽象工厂 | 声明工厂方法（返回抽象产品），可包含创建流程的模板逻辑。 |
+| **ConcreteCreator** | 具体工厂 | 实现工厂方法，返回对应的具体产品实例。 |
+| **Product** | 抽象产品 | 定义产品的公共接口和行为规范。 |
+| **ConcreteProduct** | 具体产品 | 实现抽象产品接口的实际对象。 |
 
-## 现代应用案例
+### 协作流程
+1. 客户端创建一个具体工厂实例（如 `HaierTelevisionFactory`）。
+2. 客户端通过抽象工厂接口调用 `createProduct()` 方法。
+3. 具体工厂内部实例化对应的具体产品并返回。
+4. 客户端始终面向抽象产品编程，不依赖任何具体类。
 
-1. **日志框架 (Serilog / Log4j)**：在 Serilog 或 Log4j 等日志系统中，`ILogger` 或 `Logger` 实例通常是通过工厂方法创建的。例如，你可以定义一个 `LoggerConfiguration`（抽象）并配置不同的接收器（Sink，具体工厂），它们负责创建日志记录器的特定实例。
-2. **依赖注入 (DI) 容器 (ASP.NET Core / Spring Boot)**：现代 Web 框架大量使用工厂模式。在 ASP.NET Core 或 Spring Boot 中，你可以注册一个“工厂方法”或“工厂 Bean”，DI 容器会调用该方法来生成服务实例（例如 `AddScoped<IMyService>(sp => new MyService())`），这实质上是将具体实例化代码从业务逻辑中解耦出来。
+## 3. 代码实现
 
-## 核心角色
-
-- **抽象工厂 (Abstract Factory)**：定义创建产品对象的抽象工厂方法。
-- **抽象产品 (Abstract Product)**：描述产品的共同行为。
-- **具体工厂 (Concrete Factory)**：实现抽象方法以创建具体产品。
-- **具体产品 (Concrete Product)**：由工厂创建的实际产品对象。
-
-## 示例代码
+> **代码场景**：以电视机生产为例，不同品牌有独立的工厂。
 
 ::: code-group
 ```cs [C#]
@@ -65,31 +83,30 @@ public class XiaomiTelevisionFactory : ITelevisionFactory
 ```
 
 ```java [Java]
-// 抽象产品 - 电视机
+// 抽象产品
 interface Television {
     void play();
 }
 
-// 具体产品 - 海尔电视机
+// 具体产品
 class HaierTelevision implements Television {
     public void play() {
         System.out.println("正在播放海尔电视");
     }
 }
 
-// 具体产品 - 小米电视机
 class XiaomiTelevision implements Television {
     public void play() {
         System.out.println("正在播放小米电视");
     }
 }
 
-// 抽象工厂 - 电视工厂
+// 抽象工厂
 interface TelevisionFactory {
     Television createTelevision();
 }
 
-// 具体工厂 - 海尔电视工厂
+// 具体工厂
 class HaierTelevisionFactory implements TelevisionFactory {
     @Override
     public Television createTelevision() {
@@ -97,7 +114,6 @@ class HaierTelevisionFactory implements TelevisionFactory {
     }
 }
 
-// 具体工厂 - 小米电视工厂
 class XiaomiTelevisionFactory implements TelevisionFactory {
     @Override
     public Television createTelevision() {
@@ -107,10 +123,49 @@ class XiaomiTelevisionFactory implements TelevisionFactory {
 ```
 :::
 
-## 总结
+客户端调用：
 
-::: tip 核心洞察
-“在工厂方法模式中，父类决定实例生成的具体方式，但不决定要生成的具体类。具体的处理完全交给子类。这实现了生成实例的框架与实际生成实例的类之间的解耦。”
+::: code-group
+```cs [C#]
+ITelevisionFactory factory = new HaierTelevisionFactory();
+ITelevision tv = factory.CreateTelevision();
+tv.Play(); // 输出：正在播放海尔电视
+```
+
+```java [Java]
+TelevisionFactory factory = new HaierTelevisionFactory();
+Television tv = factory.createTelevision();
+tv.play(); // 输出：正在播放海尔电视
+```
 :::
 
-工厂方法模式将对象的创建封装在抽象类（或接口）中，并让子类决定实例化哪一个类。客户端只需调用工厂方法即可获得产品——“我想要个东西，你给我一个就行。”
+## 4. 优缺点分析
+
+### 优点
+1. **符合开闭原则**：新增产品只需新增具体工厂和具体产品类，无需修改已有代码。
+2. **解耦客户端与具体产品**：客户端面向抽象编程，不依赖具体类名。
+3. **单一职责**：每个工厂只负责创建一种产品。
+
+### 缺点
+1. **类的数量增多**：每新增一种产品就需要新增一个工厂类，系统复杂度上升。
+2. **增加抽象层级**：引入了额外的抽象层，对简单场景可能是过度设计。
+
+## 5. 相关模式对比
+
+| 模式名称 | 相似点 | 核心区别 |
+| :--- | :--- | :--- |
+| **简单工厂** | 都封装了对象创建 | 简单工厂用一个类集中判断；工厂方法用继承将判断分散到子类，符合开闭原则。 |
+| **抽象工厂** | 都使用工厂接口 | 工厂方法创建**单一产品**；抽象工厂创建**产品族**（一系列相关产品）。 |
+| **模板方法** | 都将部分逻辑延迟到子类 | 模板方法延迟的是**算法步骤**；工厂方法延迟的是**对象创建**。 |
+
+## 6. 总结与思考
+
+**核心思想**
+
+*   工厂方法的"魂"在于**延迟决策**：父类定义"做什么"（创建流程），子类决定"用什么做"（具体产品）。它是简单工厂的升级版，用继承和多态替代了 `if/else`，让系统真正做到对扩展开放、对修改关闭。
+
+**实际应用**
+
+*   **Java Collection 框架**：`Collection.iterator()` 是典型的工厂方法——`ArrayList` 返回 `ArrayList.Itr`，`HashSet` 返回 `HashMap.KeyIterator`，调用方只面向 `Iterator` 接口。
+*   **SLF4J**：`ILoggerFactory.getLogger()` 由不同日志框架（Logback、Log4j2）提供具体实现，应用代码只依赖 SLF4J 接口。
+*   **ASP.NET Core**：`IServiceProviderFactory<TContainerBuilder>` 允许替换 DI 容器实现（如 Autofac），框架本身不绑定具体容器。

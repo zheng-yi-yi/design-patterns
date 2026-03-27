@@ -1,89 +1,171 @@
-# Prototype Pattern
+---
+title: Prototype Pattern
+description: Specify the kinds of objects to create using a prototypical instance, and create new objects by copying this prototype.
+---
 
-## Real-World Example
+# Prototype Design Pattern
 
-Java's `java.lang.Object` class defines a `clone()` method — a native method that provides object copying capability. However, it is `protected`, so a class must implement the `Cloneable` interface and override `clone()` to use it. Java collection classes like `ArrayList` and `HashSet` implement `Cloneable` and override `clone()`, allowing convenient collection copying.
+::: tip Definition
+**Prototype Pattern**: Specify the kinds of objects to create using a prototypical instance, and create new objects by **copying (cloning)** this prototype. When object creation is costly, cloning is more efficient than constructing from scratch.
+:::
 
-## Definition
+## 1. Pattern Intent
 
-Some objects have complex creation processes (e.g., heavy computation or resource consumption) and need to be created frequently. The Prototype pattern creates new objects by copying an existing prototype object, avoiding the need to know creation details and reducing creation cost.
+**What problem does it solve?**
+*   When object initialization requires expensive resources (database queries, file parsing, network requests), every `new` repeats the costly initialization. The Prototype pattern clones an existing object to avoid repeated initialization.
+*   When many structurally similar objects are needed with only minor differences, cloning a "baseline object" and tweaking it is more efficient than building from scratch.
 
-> **Prototype Pattern**: Specify the kinds of objects to create using a prototypical instance, and create new objects by **copying this prototype**. It allows an object to create another customizable object without knowing any creation details.
+**Application scenarios**
+*   ✅ Mass enemy spawning in games: clone from a prototype instead of initializing from database each time.
+*   ✅ Configuration management: clone a baseline server config and tweak port, tags, etc.
+*   ✅ Document templates: clone a new document from a template without rebuilding all styles and formatting.
+*   ❌ When object creation is cheap and the structure is simple, using `new` directly is clearer — no need for cloning.
 
-- Cloned objects do **not share memory** with the original — they are fully independent.
-- Modifying a cloned object does not affect the original, but **shallow vs. deep copy** issues must be considered for reference-type fields.
+## 2. Pattern Structure
 
-## Roles
+### UML Class Diagram
 
-1. **Abstract Prototype (`Prototype`)**: An interface or abstract class that defines the `clone()` method.
-2. **Concrete Prototype (`ConcretePrototype`)**: Implements or extends the abstract prototype, overriding the `clone()` method to create new instances.
+![Prototype Pattern](../images/image-20240605211858384.png)
 
-## Example Code
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Prototype** | Abstract Prototype | Declares the `clone()` method interface. |
+| **ConcretePrototype** | Concrete Prototype | Implements the `clone()` method, returning a copy of itself. |
+| **Client** | Client | Creates new objects by calling the prototype's `clone()` method. |
 
-```java
-abstract class Prototype {
-    protected String attribute;
+### Collaboration Flow
+1. The client holds a reference to a prototype object.
+2. When a new object is needed, the client calls the prototype's `clone()` method.
+3. The prototype returns a copy of itself (shallow or deep copy).
+4. The client customizes the clone as needed.
 
-    public Prototype(String attribute) {
-        this.attribute = attribute;
+### Shallow Copy vs Deep Copy
+
+| Feature | Shallow Copy | Deep Copy |
+| :--- | :--- | :--- |
+| **Value Types** | Copied by value | Copied by value |
+| **Reference Types** | Only the reference (memory address) is copied | A new object is created and its contents are copied |
+| **Independence** | Shared child objects | Completely independent |
+
+::: warning
+If an object contains mutable reference-type members, you must use **deep copy**. Otherwise, the original and the clone share internal state, leading to unexpected data corruption.
+:::
+
+## 3. Code Implementation
+
+> **Scenario**: Server configuration cloning — clone a baseline config then fine-tune.
+
+::: code-group
+```csharp [C#]
+using System;
+using System.Collections.Generic;
+
+public class ServerConfig : ICloneable
+{
+    public string OS { get; set; }
+    public int Port { get; set; }
+    public List<string> Tags { get; set; } = new();
+
+    public object Clone()
+    {
+        // Shallow Copy
+        var clone = (ServerConfig)this.MemberwiseClone(); // [!code highlight]
+        
+        // Deep Copy for the List
+        clone.Tags = new List<string>(this.Tags); // [!code highlight]
+        
+        return clone;
     }
 
-    public String getAttribute() {
-        return attribute;
-    }
-
-    public abstract Prototype clone();
-}
-
-class ConcretePrototypeA extends Prototype {
-    public ConcretePrototypeA(String attribute) {
-        super(attribute);
-    }
-
-    @Override
-    public Prototype clone() {
-        return new ConcretePrototypeA(getAttribute());
-    }
-}
-
-class ConcretePrototypeB extends Prototype {
-    public ConcretePrototypeB(String attribute) {
-        super(attribute);
-    }
-
-    @Override
-    public Prototype clone() {
-        return new ConcretePrototypeB(getAttribute());
-    }
-}
-
-public class Client {
-    public static void main(String[] args) {
-        Prototype prototypeA = new ConcretePrototypeA("Prototype Object A");
-        Prototype copyA = prototypeA.clone();
-        System.out.println("Original: " + prototypeA.getAttribute());
-        System.out.println("Clone: " + copyA.getAttribute());
-
-        Prototype prototypeB = new ConcretePrototypeB("Prototype Object B");
-        Prototype copyB = prototypeB.clone();
-        System.out.println("Original: " + prototypeB.getAttribute());
-        System.out.println("Clone: " + copyB.getAttribute());
-    }
+    public override string ToString() => $"OS={OS}, Port={Port}, Tags=[{string.Join(", ", Tags)}]";
 }
 ```
 
-## Shallow Copy vs. Deep Copy
+```java [Java]
+import java.util.ArrayList;
+import java.util.List;
 
-**Shallow Copy**: Creates a new object and copies all non-static fields. For value types, a bit-by-bit copy is performed. For reference types, only the reference is copied — not the referenced object. The original and clone share the same referenced objects.
+public class ServerConfig implements Cloneable {
+    private String os;
+    private int port;
+    private List<String> tags = new ArrayList<>();
 
-**Deep Copy**: Creates a new object and recursively copies all fields, including referenced objects, until the entire object graph is duplicated. The original and clone are completely independent.
+    public void setOs(String os) { this.os = os; }
+    public void setPort(int port) { this.port = port; }
+    public List<String> getTags() { return tags; }
 
-In Java, shallow copy can be implemented via `Cloneable` and `clone()`, while deep copy can be achieved through serialization (`Serializable`).
+    @Override
+    public ServerConfig clone() {
+        try {
+            ServerConfig copy = (ServerConfig) super.clone(); // [!code highlight]
+            // Manually handle deep copy for mutable members
+            copy.tags = new ArrayList<>(this.tags); // [!code highlight]
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+}
+```
+:::
 
-## Summary
+Client usage:
 
-The Prototype pattern is used for creating objects of the **same type but at different memory addresses** by **copying an existing instance**. It is suitable when:
+::: code-group
+```csharp [C#]
+var baseConfig = new ServerConfig { OS = "Linux", Port = 80, Tags = { "web" } };
 
-1. Class initialization consumes significant resources (data, hardware, etc.).
-2. The system needs many small, similar objects.
-3. You want to avoid creating a factory class hierarchy parallel to the product hierarchy.
+var instance1 = (ServerConfig)baseConfig.Clone();
+instance1.Port = 8080;
+instance1.Tags.Add("api");
+
+Console.WriteLine(baseConfig);  // OS=Linux, Port=80, Tags=[web]
+Console.WriteLine(instance1);   // OS=Linux, Port=8080, Tags=[web, api]
+```
+
+```java [Java]
+ServerConfig baseConfig = new ServerConfig();
+baseConfig.setOs("Linux");
+baseConfig.setPort(80);
+baseConfig.getTags().add("web");
+
+ServerConfig instance1 = baseConfig.clone();
+instance1.setPort(8080);
+instance1.getTags().add("api");
+
+// baseConfig's tags are unaffected (deep copy)
+```
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Performance**: Cloning objects is far faster than re-initializing (database reads, file parsing, etc.).
+2. **Simplified creation**: Hides the complexity of object initialization; clients simply call `clone()`.
+3. **Dynamic object creation**: Different prototypes can be used at runtime to dynamically produce different objects.
+
+### Cons
+1. **Deep copy complexity**: When objects contain multiple layers of nested references, each layer must be manually deep-copied.
+2. **May violate encapsulation**: Cloning requires access to an object's internal state, potentially exposing private details.
+
+## 5. Related Pattern Comparison
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Factory Method** | Both create objects | Factory Method **creates new objects from scratch** via factory classes; Prototype **clones existing objects**. |
+| **Builder** | Both can create complex objects | Builder **constructs from scratch step by step**; Prototype **copies an existing object at once** then tweaks. |
+| **Singleton** | Both involve instance management | Singleton ensures a **single unique instance**; Prototype is used for **mass-copying** instances. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The essence of Prototype is **clone instead of create**: when `new` is too expensive, find an existing object, "photocopy" it, and make minor adjustments. It encapsulates the complexity of "how to initialize an object" inside the prototype, exposing only a `clone()` interface to the outside.
+
+**Real-World Applications**
+
+*   **Java**: `Object.clone()` is the language's built-in prototype support. In Spring, beans with `prototype` scope return new instances on each `getBean()` call, conceptually aligned with this pattern.
+*   **.NET**: The `ICloneable` interface and `MemberwiseClone()` method are the standard building blocks for implementing the Prototype pattern.
+*   **JavaScript**: `Object.create(proto)` creates new objects directly from an existing object as prototype — the prototype chain is a core language mechanism.
+*   **Game Engines**: Unity's `Instantiate(prefab)` is essentially prototype cloning — a Prefab is the prototype, and each instantiation is a clone.

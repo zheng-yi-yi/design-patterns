@@ -1,118 +1,190 @@
-# Abstract Factory Pattern
+---
+title: Abstract Factory Pattern
+description: Provide an interface for creating families of related or dependent objects without specifying their concrete classes.
+---
 
-## Real-World Example
+# Abstract Factory Design Pattern
 
-`java.sql.Connection` is an abstract factory. It returns different abstract products such as `Statement`, `PreparedStatement`, and `CallableStatement`. The concrete implementations are provided by database drivers. This allows the JDBC API to work with multiple database drivers without changing the API code.
+::: tip Definition
+**Abstract Factory Pattern**: Provide an interface for creating **families of related or dependent objects** without specifying their concrete classes. It ensures that objects within the same product family are always used together.
+:::
 
-## Definition
+## 1. Pattern Intent
 
-In the Factory Method pattern, each concrete factory creates only a **single** product. Sometimes, we need a factory that can provide multiple product objects rather than just one.
+**What problem does it solve?**
+*   When a system needs to create multiple related products (a product family) and must guarantee compatibility between them. Factory Method can only create a single product, while Abstract Factory encapsulates the creation of an entire family of related products in one factory, structurally preventing cross-family mixing.
+*   For example: in a game UI theme system, Fantasy-style buttons must pair with Fantasy-style health bars — they cannot be mixed with Sci-Fi components.
 
-> **Abstract Factory Pattern**: Provide an interface for creating **families of related or dependent objects** without specifying their concrete classes.
+**Application scenarios**
+*   ✅ Cross-platform UI toolkits: Windows/macOS/Linux each have a set of buttons, text fields, and dropdowns that must be used together.
+*   ✅ Game theme systems: Fantasy/Sci-Fi UI elements must maintain visual consistency.
+*   ✅ Database access layers: Connection, Command, and DataReader for different databases (MySQL/PostgreSQL/SQLite) must be from the same provider.
+*   ❌ When there is only one product type (not a product family), use Factory Method instead — Abstract Factory adds unnecessary complexity.
 
-The Abstract Factory pattern ensures that a series of related products are created together and can work with each other.
+## 2. Pattern Structure
 
-## Roles
+### UML Class Diagram
 
-1. **Abstract Product (`AbstractProduct`)**: A product family that declares the main characteristics and behaviors. Multiple abstract product interfaces can be defined.
-2. **Concrete Product (`ConcreteProduct`)**: Implements the abstract product interface to produce specific products.
-3. **Abstract Factory (`AbstractFactory`)**: An interface that declares methods for creating abstract products, one method per product.
-4. **Concrete Factory (`ConcreteFactory`)**: Implements the abstract factory's creation methods to produce specific products.
+![Abstract Factory Pattern](../images/image-20240605185157189.png)
 
-## Example Code
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **AbstractFactory** | Abstract Factory | Declares methods for creating each product in the family; one method per abstract product type. |
+| **ConcreteFactory** | Concrete Factory | Implements the abstract factory's creation methods, producing a complete set of products for one brand/theme. |
+| **AbstractProduct** | Abstract Product | Defines the public interface for one category of products in the family. Multiple abstract products may exist. |
+| **ConcreteProduct** | Concrete Product | Implements the abstract product interface; belongs to a specific brand/theme. |
 
-```java
-abstract class AbstractProductA {  // Abstract Product (TV)
-    public abstract void methodA();  // Play
+### Collaboration Flow
+1. The client selects a concrete factory (e.g., `HaierFactory`) and holds it via the abstract factory interface.
+2. The client calls the factory's creation methods (`createTelevision()`, `createAirConditioner()`).
+3. The factory returns matching products from the same brand; the client programs against abstract products.
+4. Switching brands only requires replacing the factory instance — client code needs no changes.
+
+## 3. Code Implementation
+
+> **Scenario**: Home appliance brands — televisions and air conditioners from the same brand must be used together.
+
+::: code-group
+```cs [C#]
+// Abstract Products
+public interface ITelevision { void Play(); }
+public interface IAirConditioner { void Adjust(); }
+
+// Concrete Products (Brand A - Haier)
+public class HaierTelevision : ITelevision 
+{ 
+    public void Play() => Console.WriteLine("Playing Haier TV"); 
+}
+public class HaierAirConditioner : IAirConditioner 
+{ 
+    public void Adjust() => Console.WriteLine("Adjusting Haier AC"); 
 }
 
-class ConcreteProductA1 extends AbstractProductA {  // Concrete Product (Haier TV)
-    @Override
-    public void methodA() {
-        System.out.println("Haier TV is playing...");
-    }
+// Concrete Products (Brand B - Xiaomi)
+public class XiaomiTelevision : ITelevision 
+{ 
+    public void Play() => Console.WriteLine("Playing Xiaomi TV"); 
+}
+public class XiaomiAirConditioner : IAirConditioner 
+{ 
+    public void Adjust() => Console.WriteLine("Adjusting Xiaomi AC"); 
 }
 
-class ConcreteProductA2 extends AbstractProductA {  // Concrete Product (TCL TV)
-    @Override
-    public void methodA() {
-        System.out.println("TCL TV is playing...");
-    }
+// Abstract Factory
+public interface IApplianceFactory
+{
+    ITelevision CreateTelevision();
+    IAirConditioner CreateAirConditioner();
 }
 
-abstract class AbstractProductB {  // Abstract Product (Air Conditioner)
-    public abstract void methodB();  // Adjust temperature
+// Concrete Factory (Haier)
+public class HaierFactory : IApplianceFactory
+{
+    public ITelevision CreateTelevision() => new HaierTelevision(); // [!code highlight]
+    public IAirConditioner CreateAirConditioner() => new HaierAirConditioner(); // [!code highlight]
 }
 
-class ConcreteProductB1 extends AbstractProductB {  // Concrete Product (Haier AC)
-    @Override
-    public void methodB() {
-        System.out.println("Haier AC is adjusting temperature...");
-    }
-}
-
-class ConcreteProductB2 extends AbstractProductB {  // Concrete Product (TCL AC)
-    @Override
-    public void methodB() {
-        System.out.println("TCL AC is adjusting temperature...");
-    }
-}
-
-abstract class AbstractFactory {  // Abstract Factory
-    public abstract AbstractProductA createProductA();
-    public abstract AbstractProductB createProductB();
-}
-
-class ConcreteFactory1 extends AbstractFactory {  // Concrete Factory (Haier)
-    @Override
-    public AbstractProductA createProductA() {
-        System.out.println("Haier factory produces Haier TV");
-        return new ConcreteProductA1();
-    }
-
-    @Override
-    public AbstractProductB createProductB() {
-        System.out.println("Haier factory produces Haier AC");
-        return new ConcreteProductB1();
-    }
-}
-
-class ConcreteFactory2 extends AbstractFactory {  // Concrete Factory (TCL)
-    @Override
-    public AbstractProductA createProductA() {
-        System.out.println("TCL factory produces TCL TV");
-        return new ConcreteProductA2();
-    }
-
-    @Override
-    public AbstractProductB createProductB() {
-        System.out.println("TCL factory produces TCL AC");
-        return new ConcreteProductB2();
-    }
-}
-
-public class Client {
-    public static void main(String args[]) {
-        AbstractFactory haierFactory = new ConcreteFactory1();
-        AbstractProductA haierTV = haierFactory.createProductA();
-        AbstractProductB haierAC = haierFactory.createProductB();
-        haierTV.methodA();
-        haierAC.methodB();
-
-        AbstractFactory tclFactory = new ConcreteFactory2();
-        AbstractProductA tclTV = tclFactory.createProductA();
-        AbstractProductB tclAC = tclFactory.createProductB();
-        tclTV.methodA();
-        tclAC.methodB();
-    }
+// Concrete Factory (Xiaomi)
+public class XiaomiFactory : IApplianceFactory
+{
+    public ITelevision CreateTelevision() => new XiaomiTelevision(); // [!code highlight]
+    public IAirConditioner CreateAirConditioner() => new XiaomiAirConditioner(); // [!code highlight]
 }
 ```
 
-## Summary
+```java [Java]
+// Abstract Products
+interface Television { void play(); }
+interface AirConditioner { void adjust(); }
 
-The Abstract Factory pattern provides an interface for creating families of related or dependent objects without specifying concrete classes. It is suitable when:
+// Concrete Products (Haier)
+class HaierTelevision implements Television {
+    public void play() { System.out.println("Haier TV is playing..."); }
+}
+class HaierAirConditioner implements AirConditioner {
+    public void adjust() { System.out.println("Haier AC is adjusting temperature..."); }
+}
 
-1. **Product families and product hierarchies**: A system needs to provide multiple product series, each containing related products.
-2. **Decoupling from concrete products**: The system should be independent of product creation, composition, and representation.
-3. **Emphasizing related product interfaces**: When you want to enforce that a series of related products are used together.
-4. **Providing a product library**: When you want to expose only interfaces, not implementations.
+// Concrete Products (TCL)
+class TCLTelevision implements Television {
+    public void play() { System.out.println("TCL TV is playing..."); }
+}
+class TCLAirConditioner implements AirConditioner {
+    public void adjust() { System.out.println("TCL AC is adjusting temperature..."); }
+}
+
+// Abstract Factory
+interface ApplianceFactory {
+    Television createTelevision();
+    AirConditioner createAirConditioner();
+}
+
+// Concrete Factory (Haier)
+class HaierFactory implements ApplianceFactory {
+    @Override
+    public Television createTelevision() { return new HaierTelevision(); } // [!code highlight]
+    @Override
+    public AirConditioner createAirConditioner() { return new HaierAirConditioner(); } // [!code highlight]
+}
+
+// Concrete Factory (TCL)
+class TCLFactory implements ApplianceFactory {
+    @Override
+    public Television createTelevision() { return new TCLTelevision(); } // [!code highlight]
+    @Override
+    public AirConditioner createAirConditioner() { return new TCLAirConditioner(); } // [!code highlight]
+}
+```
+:::
+
+Client usage:
+
+::: code-group
+```cs [C#]
+IApplianceFactory factory = new HaierFactory();
+ITelevision tv = factory.CreateTelevision();
+IAirConditioner ac = factory.CreateAirConditioner();
+tv.Play();    // Output: Playing Haier TV
+ac.Adjust();  // Output: Adjusting Haier AC
+```
+
+```java [Java]
+ApplianceFactory factory = new HaierFactory();
+Television tv = factory.createTelevision();
+AirConditioner ac = factory.createAirConditioner();
+tv.play();    // Output: Haier TV is playing...
+ac.adjust();  // Output: Haier AC is adjusting temperature...
+```
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Product family consistency**: The factory structurally guarantees that products from the same family are used together — cross-family mixing is impossible.
+2. **Open/Closed Principle**: Adding a new product family only requires new concrete factory and product classes — no modification to existing code.
+3. **Decouples client from concrete products**: The client depends only on abstract interfaces; switching families only requires swapping the factory instance.
+
+### Cons
+1. **Difficult to add new product types**: If the family needs a new product type (e.g., adding a washing machine), the abstract factory interface and all concrete factories must be modified — known as the "incline of OCP."
+2. **Class proliferation**: Each product family requires a full set of factory and product classes, increasing system complexity.
+
+## 5. Related Pattern Comparison
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Factory Method** | Both create objects via factory interfaces | Factory Method creates a **single product**; Abstract Factory creates **product families** (multiple related products). |
+| **Builder** | Both encapsulate complex object creation | Builder focuses on **step-by-step construction of one complex object**; Abstract Factory focuses on **batch creation of a set of related objects**. |
+| **Prototype** | Both can create new objects | Prototype creates objects by **cloning** existing ones; Abstract Factory creates brand-new objects via **factory methods**. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The essence of Abstract Factory is the **product family constraint**: it not only encapsulates "what to create," but also enforces "which things must be created together." By centralizing an entire family's creation in one factory, it eliminates cross-family mixing at compile time.
+
+**Real-World Applications**
+
+*   **Java AWT/Swing**: `java.awt.Toolkit` is a classic Abstract Factory — different platforms (Windows/macOS/Linux) return their own native buttons, text fields, etc., ensuring consistent UI widget styling per platform.
+*   **ADO.NET**: `DbProviderFactory` (e.g., `SqlClientFactory`, `MySqlClientFactory`) provides matching Connection, Command, and DataAdapter for each database.
+*   **Spring Framework**: Different implementations of the `BeanFactory` interface (`XmlBeanFactory`, `AnnotationConfigApplicationContext`) create different families of Beans based on configuration style.

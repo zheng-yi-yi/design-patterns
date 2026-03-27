@@ -30,7 +30,7 @@
 | [抽象工厂 (Abstract Factory)](./creational/abstract-factory) | 提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类。 | ![抽象工厂](./images/image-20240605185157189.png) |
 | [单例 (Singleton)](./creational/singleton) | 保证一个类只有一个实例，并提供一个访问它的全局访问点。 | ![单例](./images/4a98103b10a6c704d36c55f00006677b.png) |
 | [原型 (Prototype)](./creational/prototype) | 通过克隆现有的实例来创建新对象。 | ![原型](./images/image-20240605211858384.png) |
-| [生成器 (Builder)](./creational/builder) | 将一个复杂对象的构建与其表示分离，使得同样的构建过程可以创建不同的表示。 | ![生成器](./images/84e1311ac13c1ab1ed6395a437376fcc-17175962994103.png) |
+| [建造者 (Builder)](./creational/builder) | 将一个复杂对象的构建与其表示分离，使得同样的构建过程可以创建不同的表示。 | ![建造者](./images/84e1311ac13c1ab1ed6395a437376fcc-17175962994103.png) |
 
 ### 结构型模式
 

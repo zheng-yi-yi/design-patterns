@@ -1,137 +1,197 @@
-# Builder Pattern
+---
+title: Builder Pattern
+description: Separate the construction of a complex object from its representation so that the same construction process can create different representations.
+---
 
-## Real-World Example
+# Builder Design Pattern
 
-In Java, `StringBuilder` uses the Builder pattern. It provides a mutable character sequence — you can add characters or strings step by step via `append()`, and finally get the built string via `toString()`.
+::: tip Definition
+**Builder Pattern**: Separate the **construction** of a complex object from its **representation**, so that the same construction process can create different representations. It allows step-by-step construction of complex objects, avoiding the telescoping constructor anti-pattern.
+:::
 
-In Java 8, the `Stream API` also applies the Builder pattern. Methods like `filter` and `map` build a processing pipeline step by step, each returning a new `Stream`. A terminal operation (like `collect` or `forEach`) produces the final result.
+## 1. Pattern Intent
 
-## Definition
+**What problem does it solve?**
+*   When an object's constructor has many optional parameters, it becomes a "telescoping constructor" — parameter order is hard to remember, callers pass `null` for unused parameters, and readability suffers.
+*   When the construction steps are fixed but the specific implementation of each step may vary, the "how to build" needs to be separated from "what to build."
 
-The Builder pattern is used for **step-by-step construction of complex objects**. The construction algorithm is independent of the parts' creation and assembly.
+**Application scenarios**
+*   ✅ Building HTTP requests: URL, Method, Headers, Body are mostly optional — a builder sets them incrementally.
+*   ✅ Building complex emails: recipients, CC, BCC, attachments, HTML body — flexible combinations.
+*   ✅ SQL query builders: `SELECT`, `WHERE`, `ORDER BY`, `LIMIT` assembled on demand.
+*   ❌ When an object has only a few required parameters and they are fixed, a regular constructor is simpler.
 
-> **Builder Pattern**: Separate the **construction** of a complex object from its **representation**, so that the same construction process can create different representations.
+## 2. Pattern Structure
 
-The Builder pattern separates construction (handled by `Builder`) from assembly (handled by `Director`), decoupling these responsibilities and allowing different builders and assembly methods to create different objects.
+### UML Class Diagram
 
-## Roles
+![Builder Pattern](../images/84e1311ac13c1ab1ed6395a437376fcc-17175962994103.png)
 
-1. **Product**: A complex object with multiple parts that can be assembled step by step.
-2. **Abstract Builder (`Builder`)**: An interface defining methods for creating each part of the product.
-3. **Concrete Builder (`ConcreteBuilder`)**: Implements the builder interface, responsible for constructing and assembling parts, and provides a method to retrieve the finished product.
-4. **Director**: Controls the construction process by calling the builder's methods in a specific order.
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Product** | Product | The complex object being built, containing multiple parts. |
+| **Builder** | Abstract Builder | Defines the abstract interface for creating each part of the product. |
+| **ConcreteBuilder** | Concrete Builder | Implements the builder interface; responsible for building and assembling parts; provides a method to retrieve the final product. |
+| **Director** | Director | Controls the construction process by calling builder methods in a specific order (can be omitted in fluent API approaches). |
 
-## Example Code
+### Collaboration Flow
+1. The client creates a concrete builder instance.
+2. (Optional) The builder is passed to a director, which controls the construction order.
+3. The builder incrementally sets each part of the product.
+4. The client calls `build()` or `getResult()` to retrieve the final product.
 
-### Classic Approach
+## 3. Code Implementation
 
-```java
-// Product
-class Product {
-    private String partA;
-    private String partB;
+> **Scenario**: An HTTP request builder demonstrating the Fluent API approach.
 
-    public void setPartA(String partA) { this.partA = partA; }
-    public void setPartB(String partB) { this.partB = partB; }
+::: code-group
+```csharp [C#]
+public class HttpRequest
+{
+    public string URL { get; internal set; }
+    public string Method { get; internal set; }
+    public Dictionary<string, string> Headers { get; internal set; }
+    public string Body { get; internal set; }
 
-    @Override
-    public String toString() {
-        return "Product{partA='" + partA + "', partB='" + partB + "'}";
+    public override string ToString() => $"{Method} {URL}\nHeaders: {Headers.Count}\nBody: {Body}";
+}
+
+public class HttpRequestBuilder
+{
+    private readonly HttpRequest _request = new HttpRequest { Headers = new() };
+
+    public HttpRequestBuilder SetUrl(string url)
+    {
+        _request.URL = url; // [!code highlight]
+        return this;
     }
-}
 
-// Builder
-interface Builder {
-    void buildPartA();
-    void buildPartB();
-    Product getResult();
-}
-
-// ConcreteBuilder
-class ConcreteBuilder implements Builder {
-    private Product product = new Product();
-
-    public void buildPartA() { product.setPartA("Part A built"); }
-    public void buildPartB() { product.setPartB("Part B built"); }
-    public Product getResult() { return product; }
-}
-
-// Director
-class Director {
-    private Builder builder;
-
-    public Director(Builder builder) { this.builder = builder; }
-
-    public Product construct() {
-        builder.buildPartA();
-        builder.buildPartB();
-        return builder.getResult();
+    public HttpRequestBuilder SetMethod(string method)
+    {
+        _request.Method = method.ToUpper(); // [!code highlight]
+        return this;
     }
-}
 
-public class Client {
-    public static void main(String[] args) {
-        Builder builder = new ConcreteBuilder();
-        Director director = new Director(builder);
-        Product product = director.construct();
-        System.out.println(product);
+    public HttpRequestBuilder AddHeader(string key, string value)
+    {
+        _request.Headers[key] = value;
+        return this;
     }
+
+    public HttpRequestBuilder SetBody(string body)
+    {
+        _request.Body = body;
+        return this;
+    }
+
+    public HttpRequest Build() => _request;
 }
 ```
 
-### Fluent API Approach
+```java [Java]
+import java.util.HashMap;
+import java.util.Map;
 
-```java
-// Product
-class Product {
-    private String partA;
-    private String partB;
+public class HttpRequest {
+    private String url;
+    private String method;
+    private Map<String, String> headers;
+    private String body;
 
-    public Product setPartA(String partA) { this.partA = partA; return this; }
-    public Product setPartB(String partB) { this.partB = partB; return this; }
+    private HttpRequest() {}
 
-    @Override
-    public String toString() {
-        return "Product{partA='" + partA + "', partB='" + partB + "'}";
-    }
-}
+    public static class Builder {
+        private String url;
+        private String method = "GET";
+        private Map<String, String> headers = new HashMap<>();
+        private String body;
 
-// Builder
-interface Builder {
-    Builder buildPartA(String partA);
-    Builder buildPartB(String partB);
-    Product getResult();
-}
+        public Builder url(String url) {
+            this.url = url; // [!code highlight]
+            return this;
+        }
 
-// ConcreteBuilder
-class ConcreteBuilder implements Builder {
-    private Product product = new Product();
+        public Builder method(String method) {
+            this.method = method; // [!code highlight]
+            return this;
+        }
 
-    public Builder buildPartA(String partA) { product.setPartA(partA); return this; }
-    public Builder buildPartB(String partB) { product.setPartB(partB); return this; }
-    public Product getResult() { return product; }
-}
+        public Builder header(String key, String value) {
+            this.headers.put(key, value);
+            return this;
+        }
 
-// Director
-class Director {
-    private Builder builder;
+        public Builder body(String body) {
+            this.body = body;
+            return this;
+        }
 
-    public Director withBuilder(Builder builder) { this.builder = builder; return this; }
-    public Product construct() { return builder.getResult(); }
-}
-
-public class Client {
-    public static void main(String[] args) {
-        Product product = new Director()
-            .withBuilder(new ConcreteBuilder()
-                .buildPartA("Part A built")
-                .buildPartB("Part B built"))
-            .construct();
-        System.out.println(product);
+        public HttpRequest build() {
+            HttpRequest request = new HttpRequest();
+            request.url = this.url;
+            request.method = this.method;
+            request.headers = this.headers;
+            request.body = this.body;
+            return request;
+        }
     }
 }
 ```
+:::
 
-## Summary
+Client usage:
 
-The Builder pattern separates the construction of sub-components (by `Builder`) from their assembly (by `Director`), enabling the creation of complex objects through decoupled building and assembly processes. Different builders and assembly strategies can produce different products.
+::: code-group
+```csharp [C#]
+var request = new HttpRequestBuilder()
+    .SetUrl("https://api.example.com")
+    .SetMethod("POST")
+    .AddHeader("Content-Type", "application/json")
+    .SetBody("{ \"key\": \"value\" }")
+    .Build();
+
+Console.WriteLine(request);
+```
+
+```java [Java]
+HttpRequest request = new HttpRequest.Builder()
+    .url("https://api.example.com")
+    .method("POST")
+    .header("Content-Type", "application/json")
+    .body("{ \"key\": \"value\" }")
+    .build();
+```
+:::
+
+## 4. Pros & Cons
+
+### Pros
+1. **Readable code**: The fluent API makes client code self-documenting — no need to remember parameter order.
+2. **Flexible composition**: Each build step is independent; clients set only what they need, avoiding unnecessary `null` parameters.
+3. **Separates construction from representation**: The same build process can produce different product representations.
+
+### Cons
+1. **Extra classes**: Each product requires a corresponding builder class, adding code volume.
+2. **Requires stable product structure**: If the product's internal structure changes frequently, the builder must be updated in sync.
+
+## 5. Related Pattern Comparison
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Abstract Factory** | Both create complex objects | Abstract Factory creates **product families** (a set of related objects); Builder **step-by-step constructs a single complex object**. |
+| **Factory Method** | Both encapsulate object creation | Factory Method focuses on **which object to create**; Builder focuses on **how to assemble the object step by step**. |
+| **Prototype** | Both can generate new objects | Prototype **clones** an existing object quickly; Builder **constructs from scratch** step by step. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The essence of Builder is **incremental construction**: it breaks down a complex object's creation into a series of independent, optional steps, letting clients compose what they need rather than being forced to supply all parameters at once. The Fluent API is the standard modern implementation approach.
+
+**Real-World Applications**
+
+*   **Java**: `StringBuilder.append().append().toString()`, `Stream.filter().map().collect()`, `HttpClient.newBuilder().version(HTTP_2).build()` are all classic Builder pattern applications.
+*   **.NET**: `IHostBuilder` in ASP.NET Core configures the web host step by step (Kestrel, logging, DI container, etc.); `ConfigurationBuilder` layers configuration sources incrementally.
+*   **MyBatis**: `SqlSessionFactoryBuilder` step-by-step constructs a `SqlSessionFactory` from XML configuration or Java code.
+*   **Lombok**: The `@Builder` annotation auto-generates builder code for Java classes, internalizing this pattern as a language-level feature.

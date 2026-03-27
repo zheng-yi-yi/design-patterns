@@ -54,7 +54,7 @@ export const sidebarZh = {
         { text: '简单工厂模式', link: '/zh/creational/simple-factory' },
         { text: '工厂方法模式', link: '/zh/creational/factory-method' },
         { text: '抽象工厂模式', link: '/zh/creational/abstract-factory' },
-        { text: '生成器模式',   link: '/zh/creational/builder' },
+        { text: '建造者模式',   link: '/zh/creational/builder' },
         { text: '原型模式',     link: '/zh/creational/prototype' },
         { text: '单例模式',     link: '/zh/creational/singleton' }
       ]

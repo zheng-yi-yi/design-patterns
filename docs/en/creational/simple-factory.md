@@ -1,31 +1,47 @@
 ---
-title: Simple Factory
-description: Learn how to encapsulate object creation logic using the Simple Factory pattern.
+title: Simple Factory Pattern
+description: Encapsulate object creation logic in a centralized factory class that decides which concrete product to instantiate based on input parameters.
 ---
 
-# Simple Factory Pattern
+# Simple Factory Design Pattern
 
-Simple Factory Pattern is not one of the 23 GoF design patterns, but it is widely used in practice as it serves as a foundation for other creational patterns. It encapsulates the creation logic of concrete products in a centralized factory class.
-
-::: info Dimension and Breadth: Why do we need a Simple Factory?
-From the perspective of design principles, the core value of the Simple Factory pattern lies in **Decoupling** and **Encapsulation**.
-
-1.  **Hiding Instantiation Details**: Object creation may involve complex initialization configurations, dependency injections, or resource allocations. Through the factory, clients no longer care about these details, they just "ask as needed".
-2.  **Separation of Concerns**: Separate the logic of "using an object" from the logic of "creating an object". The client is only responsible for the business logic, while the factory is responsible for lifecycle management.
-3.  **Starting Point for Technical Evolution**: It is the simplified prototype of Factory Method and Abstract Factory. In the early stages of a system, over-design is often unnecessary, and the simple factory provides just the right amount of flexibility.
+::: tip Definition
+The Simple Factory pattern is not one of the 23 GoF patterns, but is widely used as a foundation for creational patterns. **It centralizes object creation logic in a single factory class** that decides which concrete product to instantiate based on a given parameter, eliminating scattered `new` operations across the codebase.
 :::
 
-## Structure Diagram
+## 1. Pattern Intent
 
-![Simple Factory Structure Diagram](../images/5968a8a58e4e0cda5b4acfe05bf71414.png)
+**What problem does it solve?**
+*   When a system has multiple product types to create and the client should not be concerned with specific instantiation logic, the Simple Factory consolidates this logic into one factory class, preventing creation code from scattering across the codebase.
+*   For example: an e-commerce system supports multiple payment methods (Credit Card, PayPal, WeChat Pay). Without a factory, every caller writes its own `if/else` to select the right processor — adding a new payment method means modifying dozens of files.
 
-## Core Roles
+**Application scenarios**
+*   ✅ Payment channel selection: return different payment processors based on a string parameter.
+*   ✅ Logging system: return file loggers, database loggers, etc. based on configuration.
+*   ✅ Encoding/decoding: e.g., `Encoding.GetEncoding("utf-8")` returns the corresponding encoding object.
+*   ❌ Not suitable when product types change frequently and are numerous — every new product requires modifying the factory class, violating the Open/Closed Principle.
 
--   **Factory**: The core part, containing certain business logic and judgment logic, deciding which concrete product to create based on the information given by the outside world.
--   **Product**: The base class or interface for concrete products, defining the product specifications.
--   **ConcreteProduct**: The instance object being created.
+## 2. Pattern Structure
 
-## Examples
+### UML Class Diagram
+
+![Simple Factory Structure](../images/5968a8a58e4e0cda5b4acfe05bf71414.png)
+
+### Roles & Responsibilities
+| Role | Name | Responsibility |
+| :--- | :--- | :--- |
+| **Factory** | Factory | Core role containing decision logic; determines which concrete product to create based on parameters. |
+| **Product** | Abstract Product | Parent class or interface for concrete products; defines the product's public behavior contract. |
+| **ConcreteProduct** | Concrete Product | Implements the abstract product interface; the actual object created and returned by the factory. |
+
+### Collaboration Flow
+1. The client calls the factory's static method, passing a type parameter.
+2. The factory determines which concrete product to create based on the parameter.
+3. The factory instantiates the corresponding concrete product and returns it to the client (as an abstract product type).
+
+## 3. Code Implementation
+
+> **Scenario**: A logging system that creates file loggers or database loggers based on a type parameter.
 
 ::: code-group
 ```cs [C#]
@@ -93,19 +109,47 @@ class LoggerFactory {
 ```
 :::
 
-## Application Examples
+Client usage:
 
--   **JDK**: `java.util.Calendar.getInstance()` returns different calendar subclasses based on the timezone and locale.
--   **NET**: `System.Text.Encoding.GetEncoding("utf-8")` creates different encoding objects based on the encoding name.
--   **Web Frameworks**: Many routing engines are essentially simple factories, "manufacturing" different handlers (Controllers) based on URL paths (parameters).
+::: code-group
+```cs [C#]
+ILogger logger = LoggerFactory.CreateLogger("FILE");
+logger.Log("System startup complete");
+```
 
-## Limitations and Considerations
-
-::: warning OCP Violation
-Although the Simple Factory is convenient, it violates the **Open/Closed Principle**: for every new product added, the internal logic of the factory class must be modified.
+```java [Java]
+Logger logger = LoggerFactory.createLogger("FILE");
+logger.log("System startup complete");
+```
 :::
 
-**When to use?**
--   When there are few product objects and the creation logic is relatively fixed.
--   When the client only cares about how to obtain the object, not how the object is born.
--   As the first choice for rapid prototype development or small and medium-sized projects.
+## 4. Pros & Cons
+
+### Pros
+1. **Centralized responsibility**: Object creation logic is concentrated in the factory class; clients don't need to know concrete product class names.
+2. **Simple to use**: Clients only need to pass a parameter to get the desired product, lowering the usage barrier.
+
+### Cons
+1. **Violates Open/Closed Principle**: Every new product type requires modifying the factory's decision logic.
+2. **Overloaded factory class**: As product types grow, the factory class becomes bloated and hard to maintain.
+
+## 5. Related Pattern Comparison
+
+| Pattern | Similarity | Key Difference |
+| :--- | :--- | :--- |
+| **Factory Method** | Both encapsulate object creation | Factory Method distributes creation logic across subclasses via inheritance, conforming to OCP; Simple Factory centralizes it in one class. |
+| **Abstract Factory** | Both involve factory concepts | Abstract Factory creates **product families** (a set of related products); Simple Factory creates a single product. |
+| **Strategy** | Both select different implementations based on parameters | Strategy focuses on interchangeable algorithms; Simple Factory focuses on object creation. |
+
+## 6. Summary
+
+**Core Idea**
+
+*   The essence of Simple Factory is **centralization**: it collects scattered `new` operations into a single place, decoupling clients from concrete product classes. It is the most straightforward creational pattern, trading OCP compliance for simplicity.
+
+**Real-World Applications**
+
+*   **JDK**: `java.util.Calendar.getInstance()` returns different calendar subclasses based on timezone and locale.
+*   **.NET**: `System.Text.Encoding.GetEncoding("utf-8")` returns the corresponding encoding implementation by name.
+*   **Web Frameworks**: A routing engine is essentially a Simple Factory — it receives a request path `/users/123` and "manufactures" the corresponding `UserController`.
+*   **Spring**: `BeanFactory.getBean("dataSource")` returns the corresponding Bean instance by name, sharing the same core idea as Simple Factory.
