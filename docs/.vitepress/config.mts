@@ -6,6 +6,7 @@ import { nav } from './nav.mts'
 export default defineConfig({
   title: "design-patterns",
   description: "Deep dive into design patterns. Concepts, code, and best practices for writing maintainable software.",
+  lastUpdated: true,
   
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
@@ -13,7 +14,16 @@ export default defineConfig({
     sidebar: sidebar,
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
-    ]
+      { icon: 'github', link: 'https://github.com/zheng-yi-yi/design-patterns' }
+    ],
+
+    editLink: {
+      pattern: 'https://github.com/zheng-yi-yi/design-patterns/edit/main/docs/:path'
+    },
+
+    footer: {
+      message: 'Released under the GPLv3 License.',
+      copyright: 'Copyright © 2026-present Zheng, YiYi'
+    }
   }
 })

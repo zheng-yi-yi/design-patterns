@@ -1,4 +1,12 @@
 export const sidebar = {
+  '/overview': [
+    {
+      text: 'Introduction',
+      items: [
+        { text: 'Overview', link: '/overview' }
+      ]
+    }
+  ],
   '/creational/': [
     {
       text: 'Creational Patterns',

@@ -8,6 +8,9 @@ hero:
   tagline: A comprehensive guide to mastering design patterns
   actions:
     - theme: brand
+      text: Get Started
+      link: /overview
+    - theme: alt
       text: Creational Patterns
       link: /creational/simple-factory
     - theme: alt
