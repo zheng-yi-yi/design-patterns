@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
-import { sidebar } from './sidebar.mts'
-import { nav } from './nav.mts'
+import { sidebarEn, sidebarZh } from './sidebar.mts'
+import { navEn, navZh } from './nav.mts'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -9,11 +9,29 @@ export default defineConfig({
   lastUpdated: true,
   base: '/design-patterns/',
 
-  themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
-    nav: nav,
-    sidebar: sidebar,
+  locales: {
+    en: {
+      label: 'English',
+      lang: 'en',
+      link: '/en/',
+      themeConfig: {
+        nav: navEn,
+        sidebar: sidebarEn
+      }
+    },
+    zh: {
+      label: '简体中文',
+      lang: 'zh-Hans',
+      link: '/zh/',
+      themeConfig: {
+        nav: navZh,
+        sidebar: sidebarZh
+      }
+    }
+  },
 
+  themeConfig: {
+    // Shared configurations
     socialLinks: [
       { icon: 'github', link: 'https://github.com/zheng-yi-yi/design-patterns' }
     ],
