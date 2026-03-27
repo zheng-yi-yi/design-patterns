@@ -9,16 +9,16 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /overview
+      link: ./overview
     - theme: alt
       text: Creational Patterns
-      link: /creational/simple-factory
+      link: ./creational/simple-factory
     - theme: alt
       text: Structural Patterns
-      link: /structural/facade
+      link: ./structural/facade
     - theme: alt
       text: Behavioral Patterns
-      link: /behavioral/strategy
+      link: ./behavioral/strategy
 
 features:
   - title: Creational Patterns
