@@ -7,7 +7,8 @@ export default defineConfig({
   title: "design-patterns",
   description: "Deep dive into design patterns. Concepts, code, and best practices for writing maintainable software.",
   lastUpdated: true,
-  
+  base: '/design-patterns/',
+
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: nav,
