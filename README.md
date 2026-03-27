@@ -1,6 +1,6 @@
 # Design Patterns
 
-A comprehensive guide to **design patterns** — concepts, Java code examples, and best practices for writing maintainable software.
+A comprehensive guide to **design patterns** — concepts, code examples, and best practices for writing maintainable software.
 
 Built with [VitePress](https://vitepress.dev/).
 
@@ -60,4 +60,4 @@ npm run docs:build
 
 ## License
 
-MIT
+GPL-3.0
